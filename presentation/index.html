@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>From themes to a component tree · Next.js for WordPress developers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,520;9..144,640&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #12161c;
+      --bg-2: #1a212b;
+      --ink: #f4f0e6;
+      --muted: #a8b1bb;
+      --line: #2c3644;
+      --blue: #8eb7ff;
+      --blue-dim: #1c2c44;
+      --amber: #e4b15a;
+      --amber-dim: #3a2e18;
+      --green: #9dceb0;
+      --code: #0c1116;
+      --danger: #f0a3a0;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: "Source Sans 3", "Segoe UI", sans-serif;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+    button, a { font: inherit; color: inherit; }
+    .slide {
+      display: none;
+      min-height: 100vh;
+      max-height: 100vh;
+      overflow: auto;
+      padding: 36px 56px 78px;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .slide.active { display: flex; }
+    .kicker {
+      margin: 0;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+    h1, h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 560;
+      letter-spacing: -0.02em;
+      margin: 0;
+      line-height: 1.05;
+    }
+    h1 { font-size: clamp(40px, 5vw, 68px); max-width: 16ch; }
+    h2 { font-size: clamp(32px, 3.4vw, 46px); max-width: 22ch; }
+    .lede { margin: 0; max-width: 62ch; color: var(--muted); font-size: 22px; }
+    ul { margin: 0; padding-left: 1.1em; }
+    li { margin: 0.28em 0; }
+    li strong { color: var(--ink); font-weight: 650; }
+    .grid {
+      display: grid;
+      gap: 14px;
+      min-height: 0;
+    }
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .g3 { grid-template-columns: 1fr 1fr 1fr; }
+    .g-code { grid-template-columns: 1.05fr 0.95fr; align-items: start; }
+    .card {
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px 14px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    .card.wp { box-shadow: inset 3px 0 0 var(--amber); }
+    .card.wp h3 { color: var(--amber); }
+    .card.nx { box-shadow: inset 3px 0 0 var(--blue); }
+    .card.nx h3 { color: var(--blue); }
+    .card p, .card li { color: var(--ink); font-size: 18px; }
+    .card ul { padding-left: 1em; }
+    pre {
+      margin: 0;
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      overflow: auto;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: #d5dde6;
+    }
+    code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.86em; }
+    .cite {
+      display: inline-flex;
+      margin-top: 8px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12.5px;
+      color: var(--blue);
+      text-decoration: none;
+    }
+    .cite:hover { text-decoration: underline; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16.5px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    td:nth-child(2) { color: #f0d7a4; }
+    td:nth-child(3) { color: #d5e4ff; }
+    .path { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px; color: var(--blue); }
+    .chrome {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 20px 12px;
+      background: linear-gradient(transparent, #12161cf2 28%);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      z-index: 5;
+    }
+    .chrome button {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+    .bar { flex: 1; height: 3px; background: #2a3340; border-radius: 99px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--amber); width: 0; }
+    .notes {
+      display: none;
+      position: fixed;
+      right: 16px;
+      bottom: 52px;
+      width: min(420px, calc(100vw - 32px));
+      max-height: 42vh;
+      overflow: auto;
+      background: #241c10;
+      color: #f6e7c8;
+      border: 1px solid #6b542c;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      z-index: 6;
+    }
+    body.show-notes .slide.active .notes { display: block; }
+    .overview {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0d1116f2;
+      z-index: 8;
+      overflow: auto;
+      padding: 28px;
+    }
+    body.show-overview .overview { display: block; }
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .overview button {
+      text-align: left;
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .overview button small {
+      display: block;
+      color: var(--amber);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      margin-bottom: 4px;
+    }
+    .overview button.current { outline: 2px solid var(--amber); }
+    .title-slide { justify-content: center; padding-bottom: 72px; }
+    .title-slide h1 { max-width: 14ch; font-size: clamp(52px, 6vw, 84px); }
+    .meta { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 16px; }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .tree {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 14.5px;
+      line-height: 1.55;
+      white-space: pre;
+      margin: 0;
+    }
+    .small { font-size: 16px; color: var(--muted); margin: 0; }
+    .tag {
+      display: inline-block;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: var(--blue-dim);
+      color: var(--blue);
+    }
+    .tag.wp { background: var(--amber-dim); color: var(--amber); }
+    @media (max-width: 980px) {
+      .g2, .g3, .g-code { grid-template-columns: 1fr; }
+      .slide { padding: 24px 20px 88px; }
+      h1 { font-size: 36px; }
+      body { font-size: 18px; }
+    }
+    @media print {
+      .chrome, .overview, .notes { display: none !important; }
+      .slide {
+        display: flex !important;
+        page-break-after: always;
+        min-height: 100vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="deck">
+
+    <section class="slide title-slide active" data-title="Title">
+      <p class="kicker">Internal session · about 25 minutes</p>
+      <h1>From themes to a component tree</h1>
+      <p class="lede">Next.js and TypeScript, walked through the Acme dashboard. For people who already ship WordPress, and for people who already know React.</p>
+      <div class="meta">
+        <span class="pill">Arrows move</span>
+        <span class="pill">N notes</span>
+        <span class="pill">G overview</span>
+        <span class="pill">F full screen</span>
+      </div>
+      <aside class="notes">Open on the Acme home page in another window. Say who the hour is for: WordPress people do not need React 101, and React people do not need “what is a component.” The new part is where rendering, routing, and data meet.</aside>
+    </section>
+
+    <section class="slide" data-title="The three questions">
+      <p class="kicker">01 · Frame</p>
+      <h2>Three questions for the hour</h2>
+      <div class="grid g3">
+        <article class="card">
+          <h3>What carries</h3>
+          <p>Templates, URLs, auth gates, validation, and cache busting. You have already solved these. The names change.</p>
+        </article>
+        <article class="card nx">
+          <h3>What is new</h3>
+          <p>The server renders React by default. Some components never become JavaScript. Mutations are functions, not a new endpoint.</p>
+        </article>
+        <article class="card wp">
+          <h3>What to unlearn</h3>
+          <p>One PHP template per request. Enqueue everything. Fetch from the client because that is where you are used to putting behavior.</p>
+        </article>
+      </div>
+      <p class="small">Specimen: this repo, the finished <a href="https://nextjs.org/learn/dashboard-app">Next.js Learn dashboard</a>. Code citations open the file in the editor.</p>
+      <aside class="notes">Promise a practical comparison, not a framework tour. If time gets short, keep slides 4, 5, 7, 11, 15, and 20. Those are the argument.</aside>
+    </section>
+
+    <section class="slide" data-title="Acme map">
+      <p class="kicker">02 · Specimen</p>
+      <h2>Acme is a small admin, on purpose</h2>
+      <div class="grid g2">
+        <article class="card nx">
+          <h3>Public</h3>
+          <p><span class="path">app/page.tsx</span> marketing home.</p>
+          <p><span class="path">app/login/page.tsx</span> credentials form.</p>
+        </article>
+        <article class="card nx">
+          <h3>Private, under /dashboard</h3>
+          <p>Overview, invoices, create, edit, customers. Shared chrome in one layout. Postgres behind <span class="path">app/lib/data.ts</span>.</p>
+        </article>
+      </div>
+      <p class="lede">Treat it as a custom post type called Invoice, with a list table, an edit screen, and a front page. The interesting part is that none of those are plugins.</p>
+      <aside class="notes">Click around for 20 seconds if the app is running: home, login, invoices search. Point out there is no wp-admin. The product UI and the “admin” are the same React tree.</aside>
+    </section>
+
+    <section class="slide" data-title="What transfers">
+      <p class="kicker">03 · Transferable skills</p>
+      <h2>The recurring themes survive the rewrite</h2>
+      <table>
+        <thead><tr><th>Theme you already have</th><th>In WordPress</th><th>In this dashboard</th></tr></thead>
+        <tbody>
+          <tr><td>Compose chrome around a view</td><td>header, footer, sidebar, template parts</td><td>nested <code>layout.tsx</code></td></tr>
+          <tr><td>The URL decides the screen</td><td>template hierarchy, query vars</td><td>folders, <code>searchParams</code></td></tr>
+          <tr><td>Shape of a record</td><td>post type, meta, ACF</td><td>TypeScript types</td></tr>
+          <tr><td>Gate the private area</td><td><code>template_redirect</code>, capabilities</td><td><code>proxy.ts</code> plus checks in the action</td></tr>
+          <tr><td>Validate, then write</td><td>nonces, <code>sanitize_*</code></td><td>Zod, then SQL</td></tr>
+          <tr><td>Bust the cache on write</td><td>transients, object cache</td><td><code>revalidatePath</code></td></tr>
+        </tbody>
+      </table>
+      <aside class="notes">Read the left column aloud. Ask the room which row they trust themselves on. Most WordPress developers are already good at the left column. The session is about the right column’s mechanics, not about becoming beginners again.</aside>
+    </section>
+
+    <section class="slide" data-title="New approach">
+      <p class="kicker">04 · Where the habit breaks</p>
+      <h2>Four places a WordPress reflex fights you</h2>
+      <div class="grid g2">
+        <article class="card wp">
+          <h3>There is no theme</h3>
+          <p>Routing is the filesystem under <code>app/</code>. Adding a screen is adding a folder, not registering a page template.</p>
+        </article>
+        <article class="card wp">
+          <h3>The default render is the server</h3>
+          <p>A component can <code>await</code> the database and ship HTML only. <code>'use client'</code> is the exception you opt into.</p>
+        </article>
+        <article class="card wp">
+          <h3>Do not invent an AJAX route first</h3>
+          <p>A form can call a server function. A new REST route is a choice, not the starting move.</p>
+        </article>
+        <article class="card wp">
+          <h3>Logged-in is not allowed</h3>
+          <p>You already know <code>is_user_logged_in()</code> versus <code>current_user_can()</code>. The edge check does not replace the action check.</p>
+        </article>
+      </div>
+      <aside class="notes">This is the slide to linger on. The rest of the deck is evidence for these four. If someone says “so it’s just headless WordPress,” come back here: there is no posts table, no template hierarchy, and no admin-ajax unless you build them.</aside>
+    </section>
+
+    <section class="slide" data-title="Project structure">
+      <p class="kicker">05 · Project structure</p>
+      <h2>Same jobs, different drawers</h2>
+      <div class="grid g2">
+        <article class="card wp">
+          <h3>A theme you know</h3>
+          <p class="tree">theme/
+  style.css
+  functions.php
+  header.php
+  footer.php
+  front-page.php
+  page-invoices.php
+  template-parts/
+  inc/queries.php
+  assets/</p>
+        </article>
+        <article class="card nx">
+          <h3>This repo</h3>
+          <p class="tree">app/
+  layout.tsx          root chrome
+  page.tsx            /
+  login/page.tsx
+  dashboard/
+    layout.tsx        sidebar
+    (overview)/page.tsx
+    invoices/page.tsx
+  lib/                queries, types, actions
+  ui/                 components
+proxy.ts              request gate
+auth.ts</p>
+        </article>
+      </div>
+      <p class="small"><code>app/ui</code> is colocation, like <code>template-parts</code>, but it is not a route. Only <code>page.tsx</code>, <code>layout.tsx</code>, <code>route.ts</code>, and a few siblings become URLs.</p>
+      <aside class="notes">Stress the parenthesis folder <code>(overview)</code>: it groups the dashboard home without adding a URL segment. That is a route group. WordPress has no equivalent; the closest feeling is a template that does not get its own slug.</aside>
+    </section>
+
+    <section class="slide" data-title="Special files">
+      <p class="kicker">06 · File conventions</p>
+      <h2>The filename is the behavior</h2>
+      <table>
+        <thead><tr><th>File</th><th>WordPress cousin</th><th>In Acme</th></tr></thead>
+        <tbody>
+          <tr><td><code>page.tsx</code></td><td>the template that won the hierarchy</td><td><span class="path">app/dashboard/invoices/page.tsx</span></td></tr>
+          <tr><td><code>layout.tsx</code></td><td><code>get_header()</code> that persists</td><td><span class="path">app/dashboard/layout.tsx</span></td></tr>
+          <tr><td><code>loading.tsx</code></td><td>the spinner while the query runs</td><td><span class="path">app/dashboard/(overview)/loading.tsx</span></td></tr>
+          <tr><td><code>error.tsx</code></td><td>admin notice / <code>wp_die</code>, scoped</td><td><span class="path">app/dashboard/invoices/error.tsx</span></td></tr>
+          <tr><td><code>not-found</code></td><td><code>404.php</code> for one record</td><td><code>notFound()</code> on edit</td></tr>
+          <tr><td><code>route.ts</code></td><td><code>admin-ajax</code> or a REST callback</td><td><span class="path">app/seed/route.ts</span></td></tr>
+        </tbody>
+      </table>
+      <aside class="notes">Say this slowly: you do not register these. Next sees the filename. That is the convention shift. A new invoice screen is a folder, not a call to <code>add_menu_page</code>.</aside>
+    </section>
+
+    <section class="slide" data-title="Layouts">
+      <p class="kicker">07 · File conventions</p>
+      <h2>Layouts are the template parts that stay mounted</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>export default function Layout({ children }) {
+  return (
+    &lt;div className="flex h-screen flex-col md:flex-row"&gt;
+      &lt;div className="w-full flex-none md:w-64"&gt;
+        &lt;SideNav /&gt;
+      &lt;/div&gt;
+      &lt;div className="grow p-6 md:overflow-y-auto"&gt;
+        {children}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/layout.tsx:3">app/dashboard/layout.tsx:3-11</a>
+        </div>
+        <article class="card">
+          <h3>What to notice</h3>
+          <ul>
+            <li>Root layout owns <code>&lt;html&gt;</code> and the font. Dashboard layout owns the sidebar.</li>
+            <li>Navigating from invoices to customers swaps <code>children</code>. The sidebar is not re-requested as a new theme wrapper.</li>
+            <li>Metadata templates live on the root layout: <code>%s | Acme Dashboard</code>.</li>
+          </ul>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/layout.tsx:5">app/layout.tsx:5-21</a>
+        </article>
+      </div>
+      <aside class="notes">WordPress rebuilds header and footer on every full page load unless you have bolted on a client router. Here the nested layout is the persistent chrome. Mention the title template as the analogue of a <code>document_title_parts</code> filter, declared as data.</aside>
+    </section>
+
+    <section class="slide" data-title="Client island">
+      <p class="kicker">08 · The client boundary</p>
+      <h2>Active menu state is the part that needs the browser</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>'use client';
+
+export default function NavLinks() {
+  const pathname = usePathname();
+  return links.map((link) =&gt; (
+    &lt;Link
+      href={link.href}
+      className={clsx(/* ... */, {
+        'bg-sky-100 text-blue-600':
+          pathname === link.href,
+      })}
+    /&gt;
+  ));
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/dashboard/nav-links.tsx:1">app/ui/dashboard/nav-links.tsx:1-48</a>
+        </div>
+        <article class="card nx">
+          <h3>WordPress did this in PHP</h3>
+          <p><code>current_page_item</code> is computed while rendering the menu. That still works on the server.</p>
+          <p>This file is a client component because <code>usePathname()</code> subscribes to client navigations. The sidebar around it stays a server component.</p>
+          <p><code>SideNav</code> even posts sign-out as an inline server action. Server shell, client island, server function, one file apart.</p>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/dashboard/sidenav.tsx:21">app/ui/dashboard/sidenav.tsx:21-25</a>
+        </article>
+      </div>
+      <aside class="notes">This is the intermediate point React-familiar people still miss. <code>'use client'</code> does not mean “this runs only in the browser.” It means “this module may use state and effects, and its JS is shipped.” The parent server component can render it. You cannot import a server component into this file.</aside>
+    </section>
+
+    <section class="slide" data-title="TypeScript contracts">
+      <p class="kicker">09 · TypeScript</p>
+      <h2>The type is the schema you used to keep in comments</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>export type Invoice = {
+  id: string;
+  customer_id: string;
+  amount: number;
+  date: string;
+  status: 'pending' | 'paid';
+};
+
+export type LatestInvoiceRaw =
+  Omit&lt;LatestInvoice, 'amount'&gt; &amp; {
+    amount: number;
+  };</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/definitions.ts:19">app/lib/definitions.ts:19-45</a>
+        </div>
+        <article class="card">
+          <h3>Why the second type exists</h3>
+          <ul>
+            <li>The database stores cents as a number.</li>
+            <li>The card shows a formatted string.</li>
+            <li><code>Omit</code> plus an intersection is the boundary between those two shapes.</li>
+          </ul>
+          <p>A union on <code>status</code> is the compile-time version of “this meta value may only be pending or paid.” PHP would discover the typo at runtime.</p>
+        </article>
+      </div>
+      <aside class="notes">For the TypeScript-fluent people: these types are hand-written for the course. Say that Prisma or Drizzle would generate them, the way <code>register_post_type</code> does not generate a type but an ORM can. For WordPress people: compare with trusting <code>get_post_meta</code> to return a string.</aside>
+    </section>
+
+    <section class="slide" data-title="Server components">
+      <p class="kicker">10 · React, the new default</p>
+      <h2>Async components are allowed. That is the shift.</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>export default async function CardWrapper() {
+  const {
+    numberOfInvoices,
+    numberOfCustomers,
+    totalPaidInvoices,
+    totalPendingInvoices,
+  } = await fetchCardData();
+
+  return (
+    &lt;&gt;
+      &lt;Card title="Collected" value={totalPaidInvoices} /&gt;
+      {/* ... */}
+    &lt;/&gt;
+  );
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/dashboard/cards.tsx:17">app/ui/dashboard/cards.tsx:17-23</a>
+        </div>
+        <article class="card nx">
+          <h3>Map it to PHP, carefully</h3>
+          <p>It feels like a template that calls <code>WP_Query</code> and prints markup. The difference: the result is a React tree, and the client does not receive <code>fetchCardData</code>.</p>
+          <p>No <code>useEffect</code>. No loading flag inside the card. If you reach for those on first read of server data, you are porting a client habit into a server job.</p>
+        </article>
+      </div>
+      <aside class="notes">People who know React from 2019 will try to fix this with useEffect. Stop them kindly. Data for the first paint belongs in the async server component. Client state is for things the server cannot know: the current pathname, an open dialog, a debounced keystroke.</aside>
+    </section>
+
+    <section class="slide" data-title="Data fetching">
+      <p class="kicker">11 · Data</p>
+      <h2>Queries live in one module, like <code>inc/queries.php</code></h2>
+      <div class="grid g-code">
+        <div>
+          <pre>const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+const invoiceStatusPromise = sql`
+  SELECT SUM(CASE WHEN status = 'paid'
+    THEN amount ELSE 0 END) AS "paid",
+    /* pending too */
+  FROM invoices`;
+
+const data = await Promise.all([
+  invoiceCountPromise,
+  customerCountPromise,
+  invoiceStatusPromise,
+]);</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/data.ts:56">app/lib/data.ts:51-67</a>
+        </div>
+        <article class="card">
+          <h3>Practical differences</h3>
+          <ul>
+            <li>There is no <code>WP_Query</code>. SQL is visible. Tagged templates pass values as parameters.</li>
+            <li><code>Promise.all</code> is the parallel version of three queries you would otherwise run in sequence.</li>
+            <li>The list table is also a server component. It receives <code>query</code> and <code>currentPage</code> as props and awaits inside.</li>
+          </ul>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/invoices/table.tsx:7">app/ui/invoices/table.tsx:7-14</a>
+        </article>
+      </div>
+      <aside class="notes">Mention SQL injection briefly: the <code>sql</code> tag from postgres.js parameterizes interpolated values. That is the analogue of <code>$wpdb-&gt;prepare</code>. Do not build the query with string concatenation. The connection helper is <code>app/lib/postgres.ts</code>.</aside>
+    </section>
+
+    <section class="slide" data-title="Streaming">
+      <p class="kicker">12 · Data</p>
+      <h2>The slow card should not hold the whole screen</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>export default async function Page() {
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;Dashboard&lt;/h1&gt;
+      &lt;Suspense fallback={&lt;CardsSkeleton /&gt;}&gt;
+        &lt;CardWrapper /&gt;
+      &lt;/Suspense&gt;
+      &lt;Suspense fallback={&lt;RevenueChartSkeleton /&gt;}&gt;
+        &lt;RevenueChart /&gt;
+      &lt;/Suspense&gt;
+      &lt;Suspense fallback={&lt;LatestInvoicesSkeleton /&gt;}&gt;
+        &lt;LatestInvoices /&gt;
+      &lt;/Suspense&gt;
+    &lt;/main&gt;
+  );
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/(overview)/page.tsx:12">app/dashboard/(overview)/page.tsx:12-31</a>
+        </div>
+        <article class="card nx">
+          <h3>Two loading mechanisms</h3>
+          <p><code>loading.tsx</code> covers the route while the page shell is still pending. That file returns <code>DashboardSkeleton</code>.</p>
+          <p><code>Suspense</code> inside the page lets the heading and sidebar stay up while each region resolves. The invoices page uses the same idea, and sets <code>key={query + currentPage}</code> so a new search shows the skeleton again.</p>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/(overview)/loading.tsx:1">app/dashboard/(overview)/loading.tsx:1-5</a>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/invoices/page.tsx:36">app/dashboard/invoices/page.tsx:36-38</a>
+        </article>
+      </div>
+      <aside class="notes">WordPress analogue: the admin list table skeleton, except the fallback is per region and the HTML streams. You do not wait for the slowest widget to send the document. Uncomment the artificial delay in <code>fetchRevenue</code> if you want to demo it.</aside>
+    </section>
+
+    <section class="slide" data-title="URL state">
+      <p class="kicker">13 · Search and pagination</p>
+      <h2>Search belongs in the URL, the way query vars did</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>'use client';
+
+const handleSearch = useDebouncedCallback((term) =&gt; {
+  const params = new URLSearchParams(searchParams);
+  params.set('page', '1');
+  if (term) params.set('query', term);
+  else params.delete('query');
+  replace(`${pathname}?${params.toString()}`);
+}, 300);</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/search.tsx:1">app/ui/search.tsx:12-24</a>
+        </div>
+        <div>
+          <pre>export default async function Page(props: {
+  searchParams?: Promise&lt;{
+    query?: string;
+    page?: string;
+  }&gt;;
+}) {
+  const searchParams = await props.searchParams;
+  const query = searchParams?.query || '';
+  const currentPage = Number(searchParams?.page) || 1;
+  const totalPages = await fetchInvoicesPages(query);
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/invoices/page.tsx:15">app/dashboard/invoices/page.tsx:15-25</a>
+        </div>
+      </div>
+      <p class="small">The client writes the query string. The server reads it and queries Postgres. Shareable URLs, back button, and no duplicated React state. In current Next.js, <code>searchParams</code> is a Promise. You await it.</p>
+      <aside class="notes">This split is the whole architecture in one feature. WordPress people: this is <code>?s=</code> and <code>paged</code>, with <code>pre_get_posts</code> on the server. React people: resist storing the search string in useState as the source of truth. Debounce is the only client behavior required.</aside>
+    </section>
+
+    <section class="slide" data-title="Server actions">
+      <p class="kicker">14 · Mutations</p>
+      <h2>A form action can be a function on the server</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>'use server';
+
+export async function createInvoice(prevState, formData) {
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+  if (!validatedFields.success) {
+    return { errors: /* field errors */, message: '...' };
+  }
+  await sql`INSERT INTO invoices ...`;
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/actions.ts:1">app/lib/actions.ts:36-72</a>
+        </div>
+        <article class="card wp">
+          <h3>WordPress equivalents</h3>
+          <ul>
+            <li><code>admin-post.php</code> plus a hooked callback.</li>
+            <li>A REST <code>POST</code> you registered in <code>functions.php</code>.</li>
+            <li><code>wp_insert_post</code>, then <code>wp_safe_redirect</code>.</li>
+          </ul>
+          <p>Delete is the small version: bind the id, put the function on <code>&lt;form action&gt;</code>.</p>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/invoices/buttons.tsx:28">app/ui/invoices/buttons.tsx:28-37</a>
+        </article>
+      </div>
+      <aside class="notes">Login uses the same pattern with <code>useActionState</code> so the server can return “Invalid credentials.” without a hand-rolled fetch. Cite login-form.tsx lines 18-24. Progressive enhancement: the form still posts if you think of it as HTML first.</aside>
+    </section>
+
+    <section class="slide" data-title="Validation">
+      <p class="kicker">15 · Mutations</p>
+      <h2>Zod is <code>sanitize_*</code> with a return type</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>const FormSchema = z.object({
+  customerId: z.string({
+    invalid_type_error: 'Please select a customer.',
+  }),
+  amount: z.coerce.number()
+    .gt(0, { message: 'Please enter an amount greater than $0.' }),
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Please select an invoice status.',
+  }),
+});
+
+const CreateInvoice = FormSchema.omit({ id: true, date: true });</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/actions.ts:10">app/lib/actions.ts:10-24</a>
+        </div>
+        <article class="card">
+          <h3>What the room should copy</h3>
+          <ul>
+            <li><code>safeParse</code> returns errors. It does not throw on bad input.</li>
+            <li>The action returns <code>{ errors, message }</code> and the form renders them. That is the admin notice, field by field.</li>
+            <li>The union <code>'pending' | 'paid'</code> shows up again. The type and the validator match.</li>
+            <li>Amount is coerced from the form string, then stored as cents.</li>
+          </ul>
+        </article>
+      </div>
+      <aside class="notes">WordPress habit: sanitize on the way in, escape on the way out. Keep that. Zod replaces the ad-hoc sanitize for structured input. Escaping on the way out is mostly React’s text rendering, plus <code>next/image</code> for the customer portraits. Nonces: server actions have a framework-level action id. You still need authorization, next slide.</aside>
+    </section>
+
+    <section class="slide" data-title="Auth">
+      <p class="kicker">16 · Auth</p>
+      <h2>The gate is a proxy. The check still belongs in the action.</h2>
+      <div class="grid g-code">
+        <div>
+          <pre>callbacks: {
+  authorized({ auth, request: { nextUrl } }) {
+    const isLoggedIn = !!auth?.user;
+    const isOnDashboard =
+      nextUrl.pathname.startsWith('/dashboard');
+    if (isOnDashboard) return isLoggedIn;
+    if (isLoggedIn)
+      return Response.redirect(new URL('/dashboard', nextUrl));
+    return true;
+  },
+}</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/auth.config.ts:12">auth.config.ts:12-22</a>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/proxy.ts:1">proxy.ts:1-9</a>
+        </div>
+        <article class="card nx">
+          <h3>Two files, on purpose</h3>
+          <p><code>auth.config.ts</code> is safe to import from the proxy. <code>auth.ts</code> uses bcrypt and Postgres, which the proxy runtime cannot.</p>
+          <p>That split is in the comment at the top of the config. It is the same instinct as keeping heavy hooks out of a must-use plugin that runs everywhere.</p>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/auth.config.ts:7">auth.config.ts:7-9</a>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/auth.ts:9">auth.ts:9-16</a>
+        </article>
+      </div>
+      <aside class="notes">Advanced caveat, say it: <code>deleteInvoice</code> does not call <code>auth()</code> itself. The proxy covers dashboard navigations, including server-action posts to those URLs, but “is logged in” is the only rule. One user in the seed makes that invisible. In production, check the user inside the action the way an AJAX callback calls <code>current_user_can</code>.</aside>
+    </section>
+
+    <section class="slide" data-title="Cache">
+      <p class="kicker">17 · Cache</p>
+      <h2>Write, then say which screen is stale</h2>
+      <div class="grid g2">
+        <article class="card wp">
+          <h3>WordPress</h3>
+          <ul>
+            <li>A transient keyed by the query.</li>
+            <li><code>save_post</code> deletes that key.</li>
+            <li>Forget the delete and the list lies until expiry.</li>
+          </ul>
+        </article>
+        <article class="card nx">
+          <h3>This app</h3>
+          <ul>
+            <li>After insert, update, or delete: <code>revalidatePath('/dashboard/invoices')</code>.</li>
+            <li>Then <code>redirect</code> back to the list, so the next render reads Postgres again.</li>
+            <li>Reads here are SQL on each request. The call still matters so the client router does not reuse the old list.</li>
+          </ul>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/actions.ts:71">app/lib/actions.ts:71-72 and 110-113</a>
+        </article>
+      </div>
+      <p class="small">The skill that transfers is knowing invalidation is part of the write. The new part is that Next has more than one cache, and this sample only touches the path you just mutated.</p>
+      <aside class="notes">Do not teach the full cache matrix unless asked. If an advanced person asks: Full Route Cache, Data Cache, Router Cache. This sample is dynamic because of search params and uncached SQL. <code>revalidatePath</code> is still the explicit “this list changed.” Point them at the Next.js caching docs rather than improvising.</aside>
+    </section>
+
+    <section class="slide" data-title="Errors">
+      <p class="kicker">18 · Failure</p>
+      <h2>Missing data and broken renders are different files</h2>
+      <div class="grid g2">
+        <article class="card">
+          <h3>One missing invoice</h3>
+          <pre>const [invoice, customers] = await Promise.all([
+  fetchInvoiceById(id),
+  fetchCustomers(),
+]);
+
+if (!invoice) notFound();</pre>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/invoices/[id]/edit/page.tsx:14">app/dashboard/invoices/[id]/edit/page.tsx:11-20</a>
+          <p>Dynamic segment <code>[id]</code> is the pretty permalink. <code>params</code> is a Promise too.</p>
+        </article>
+        <article class="card">
+          <h3>The segment threw</h3>
+          <p><code>error.tsx</code> is a client component. It receives <code>error</code> and <code>reset</code>. The invoices segment can fail without taking down the sidebar, because the layout stays outside the error boundary.</p>
+          <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/invoices/error.tsx:1">app/dashboard/invoices/error.tsx:1-28</a>
+          <p>Closest WordPress feeling: an admin notice that does not white-screen the whole wp-admin.</p>
+        </article>
+      </div>
+      <aside class="notes">Short slide. The distinction is 404 versus 500. <code>notFound()</code> is deliberate. <code>error.tsx</code> is the unexpected throw from <code>fetchCardData</code> and friends, which rethrow a generic Error after logging.</aside>
+    </section>
+
+    <section class="slide" data-title="Tasks, reading">
+      <p class="kicker">19 · Standard tasks</p>
+      <h2>Reading the product</h2>
+      <table>
+        <thead><tr><th>Task</th><th>WordPress</th><th>Acme</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td><code>front-page.php</code></td><td><span class="path">app/page.tsx</span></td></tr>
+          <tr><td>Section chrome</td><td><code>get_header()</code>, sidebar.php</td><td><span class="path">app/dashboard/layout.tsx</span></td></tr>
+          <tr><td>List screen</td><td><code>WP_Query</code>, list table</td><td><span class="path">invoices/page.tsx</span> + <span class="path">ui/invoices/table.tsx</span></td></tr>
+          <tr><td>Search</td><td><code>?s=</code>, <code>pre_get_posts</code></td><td><span class="path">app/ui/search.tsx</span> writes the URL</td></tr>
+          <tr><td>Pagination</td><td><code>paginate_links</code></td><td><code>page</code> search param, 6 per page</td></tr>
+          <tr><td>Images and fonts</td><td><code>wp_enqueue_*</code></td><td><code>next/image</code>, <code>next/font</code> in <span class="path">app/ui/fonts.ts</span></td></tr>
+        </tbody>
+      </table>
+      <aside class="notes">Fonts: Inter and Lusitana are self-hosted by the font loader. You do not paste a Google link into header.php. Images on the home page use width and height so the layout does not jump. That is the performance habit WordPress themes often miss.</aside>
+    </section>
+
+    <section class="slide" data-title="Tasks, writing">
+      <p class="kicker">20 · Standard tasks</p>
+      <h2>Changing data</h2>
+      <table>
+        <thead><tr><th>Task</th><th>WordPress</th><th>Acme</th></tr></thead>
+        <tbody>
+          <tr><td>Create</td><td><code>admin-post</code>, <code>wp_insert_post</code></td><td><code>createInvoice</code> in <span class="path">app/lib/actions.ts</span></td></tr>
+          <tr><td>Edit</td><td><code>post.php?post=</code></td><td><span class="path">invoices/[id]/edit/page.tsx</span></td></tr>
+          <tr><td>Delete</td><td>nonce + capability + <code>wp_delete_post</code></td><td><code>deleteInvoice.bind(null, id)</code></td></tr>
+          <tr><td>Login</td><td><code>wp_signon</code></td><td><code>authenticate</code> → Auth.js credentials</td></tr>
+          <tr><td>Secrets</td><td><code>wp-config.php</code></td><td><code>POSTGRES_URL</code>, <code>AUTH_SECRET</code></td></tr>
+          <tr><td>Seed</td><td>WP-CLI, importer</td><td><code>GET /seed</code></td></tr>
+        </tbody>
+      </table>
+      <aside class="notes">Seed is a route handler, the one place this app looks like a classic endpoint. Fine for a course. You would not leave an unauthenticated seed route on a public deploy. Say that out loud if the room builds production apps.</aside>
+    </section>
+
+    <section class="slide" data-title="What is newer">
+      <p class="kicker">21 · For people who already learned Next.js</p>
+      <h2>A few things moved since the tutorial you remember</h2>
+      <div class="grid g3">
+        <article class="card nx">
+          <h3>App Router</h3>
+          <p>This project has no <code>pages/</code> router. Layouts, loading, and server components are the model.</p>
+        </article>
+        <article class="card nx">
+          <h3>Async request data</h3>
+          <p><code>searchParams</code> and <code>params</code> are Promises. The invoices page and the edit page both await them.</p>
+        </article>
+        <article class="card nx">
+          <h3><code>proxy.ts</code></h3>
+          <p>Next.js 16 runs this file where older docs say <code>middleware.ts</code>. Same job: run before the route.</p>
+        </article>
+      </div>
+      <p class="small">Also in this stack: React 19 <code>useActionState</code>, server actions, and Auth.js v5 split so the proxy stays free of Node-only code. None of that is required to understand components. All of it shows up in this repo.</p>
+      <aside class="notes">If the room learned the Pages router, do not re-teach it. Tell them the mental model that changed is “data fetching moved into server components” and “middleware was renamed proxy in v16.” Version in this repo is Next 16.3. Offer the docs rather than a migration guide unless they ask.</aside>
+    </section>
+
+    <section class="slide" data-title="Monday morning">
+      <p class="kicker">22 · Close</p>
+      <h2>If you only open six files on Monday</h2>
+      <ol>
+        <li><a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/layout.tsx:1">app/dashboard/layout.tsx</a> — persistent chrome.</li>
+        <li><a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/ui/dashboard/nav-links.tsx:1">app/ui/dashboard/nav-links.tsx</a> — the client boundary.</li>
+        <li><a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/dashboard/invoices/page.tsx:15">app/dashboard/invoices/page.tsx</a> — URL in, data out.</li>
+        <li><a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/definitions.ts:19">app/lib/definitions.ts</a> — the contract.</li>
+        <li><a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/app/lib/actions.ts:36">app/lib/actions.ts</a> — validate, write, revalidate, redirect.</li>
+        <li><a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/auth.config.ts:12">auth.config.ts</a> and <a class="cite" href="vscode://file/Users/kimkrog/kim/programmering/next-js/nextjs-dashboard/proxy.ts:1">proxy.ts</a> — the gate.</li>
+      </ol>
+      <aside class="notes">Leave this up while people open the repo. The running app is localhost:3000. Demo login is user@nextmail.com / 123456, from the course seed, not a real account.</aside>
+    </section>
+
+    <section class="slide" data-title="Discuss">
+      <p class="kicker">23 · Leave time for this</p>
+      <h2>Worth arguing about</h2>
+      <div class="grid g2">
+        <article class="card">
+          <h3>With the WordPress side</h3>
+          <ul>
+            <li>Which of our plugins are really “a route, a query, and a form”?</li>
+            <li>Where do we still want an editorial admin that Next does not give us?</li>
+            <li>What would we miss from hooks if the filesystem is the only extension point?</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>With the React side</h3>
+          <ul>
+            <li>Which screens in our apps are still client-fetched out of habit?</li>
+            <li>Are we authorizing inside actions, or only at the proxy?</li>
+            <li>Do our types describe the database row, or the formatted view?</li>
+          </ul>
+        </article>
+      </div>
+      <p class="small">Course for the path we walked: <a href="https://nextjs.org/learn/dashboard-app">nextjs.org/learn/dashboard-app</a></p>
+      <aside class="notes">Stop presenting. Pick one question based on who is in the room. If energy is high, the authorization question is the one that changes how people write the next form.</aside>
+    </section>
+
+  </main>
+
+  <div class="overview" id="overview">
+    <div class="overview-grid" id="overview-grid"></div>
+  </div>
+
+  <div class="chrome">
+    <span id="count">1 / 1</span>
+    <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+    <span>← → · N notes · G overview</span>
+    <button type="button" id="prev">Back</button>
+    <button type="button" id="next">Next</button>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    const count = document.getElementById('count');
+    const bar = document.getElementById('bar');
+    const overview = document.getElementById('overview');
+    const grid = document.getElementById('overview-grid');
+    let index = 0;
+
+    slides.forEach((slide, i) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.innerHTML = '<small>' + String(i + 1).padStart(2, '0') + '</small>' + (slide.dataset.title || 'Slide');
+      button.addEventListener('click', () => {
+        document.body.classList.remove('show-overview');
+        show(i);
+      });
+      grid.appendChild(button);
+    });
+
+    function show(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      count.textContent = (index + 1) + ' / ' + slides.length;
+      bar.style.width = ((index + 1) / slides.length * 100) + '%';
+      [...grid.children].forEach((button, i) => button.classList.toggle('current', i === index));
+      history.replaceState(null, '', '#' + (index + 1));
+    }
+
+    function toggleOverview(force) {
+      if (typeof force === 'boolean') {
+        document.body.classList.toggle('show-overview', force);
+      } else {
+        document.body.classList.toggle('show-overview');
+      }
+    }
+
+    document.getElementById('prev').addEventListener('click', () => show(index - 1));
+    document.getElementById('next').addEventListener('click', () => show(index + 1));
+
+    document.addEventListener('keydown', (event) => {
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+        event.preventDefault();
+        show(index + 1);
+      } else if (event.key === 'ArrowLeft' || event.key === 'PageUp' || event.key === 'Backspace') {
+        event.preventDefault();
+        show(index - 1);
+      } else if (event.key === 'n' || event.key === 'N') {
+        document.body.classList.toggle('show-notes');
+      } else if (event.key === 'g' || event.key === 'G' || event.key === 'Escape') {
+        if (event.key === 'Escape') toggleOverview(false);
+        else toggleOverview();
+      } else if (event.key === 'f' || event.key === 'F') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      } else if (event.key === 'Home') {
+        show(0);
+      } else if (event.key === 'End') {
+        show(slides.length - 1);
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('a, button, .notes, .overview')) return;
+      const x = event.clientX / window.innerWidth;
+      if (x > 0.82) show(index + 1);
+      else if (x < 0.18) show(index - 1);
+    });
+
+    function fromHash() {
+      const n = Number(location.hash.replace('#', ''));
+      return Number.isFinite(n) && n > 0 ? n - 1 : 0;
+    }
+
+    window.addEventListener('hashchange', () => show(fromHash()));
+    show(fromHash());
+  </script>
+</body>
+</html>
